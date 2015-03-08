@@ -2,10 +2,13 @@ from setuptools import setup
 
 import boot
 
+
 setup(
     name = 'boot',
     version = boot.__version__,
     description = 'A dependency graph resolver for program initialization',
+
+    # `setup.py register` complains this is not rst; just ignore it.
     long_description = boot.__doc__,
 
     author = boot.__author__,
@@ -16,6 +19,7 @@ setup(
     py_modules = ['boot'],
     test_suite = 'boot_test',
 
+    platforms = '*',
     classifiers = [
         'Development Status :: 1 - Planning',
         'Intended Audience :: Developers',

@@ -24,7 +24,6 @@ Sample usage:
     def main(argv):
         config = boot.call(argv=argv)['config']
 
-For more information, see help(boot).
 """
 
 __version__ = '0.1.0'
