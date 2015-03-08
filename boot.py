@@ -122,16 +122,13 @@ class Boot:
             from boot import boot
 
         """
-        # {func: closure} for tracking which function has (not) been called
-        self.closures = {}
-        # {name: variable}
+        self.funcs = set()
         self.variables = defaultdict(Variable)
-        # Closures that are satisfied and can be called.
         self.satisfied = []
 
     def _release(self):
         """Destroy self since closures cannot be called again."""
-        del self.closures
+        del self.funcs
         del self.variables
         del self.satisfied
 
@@ -143,7 +140,7 @@ class Boot:
         """
         if not callable(func):
             raise BootException('\'%r\' is not callable' % func)
-        if func in self.closures:
+        if func in self.funcs:
             raise BootException('cannot add \'%r\' twice' % func)
         arg_read_var = _parse_args(func, self.variables)
         writeto = _parse_ret(func, self.variables)
@@ -152,7 +149,7 @@ class Boot:
             var.readers.append(closure)
         if closure.satisfied:
             self.satisfied.append(closure)
-        self.closures[func] = closure
+        self.funcs.add(func)
         return func
 
     def call(self, **kwargs):
@@ -166,18 +163,18 @@ class Boot:
         NOTE: This object will be in a "destroyed" state after
         this function returns and should not be used.
         """
-        if not hasattr(self, 'closures'):
+        if not hasattr(self, 'funcs'):
             raise BootException('boot cannot be called again')
         queue = Closure.sort(self.satisfied)
         queue.extend(_write_values(kwargs, self.variables))
         while queue:
             closure = queue.pop(0)
             writeto = closure.call()
-            self.closures.pop(closure.func)
+            self.funcs.remove(closure.func)
             queue.extend(_notify_reader_writes(writeto))
-        if self.closures:
+        if self.funcs:
             raise BootException(
-                'cannot satisfy dependency for %r' % list(self.closures))
+                'cannot satisfy dependency for %r' % self.funcs)
         values = {
             name: var.read_latest() for name, var in self.variables.items()
         }
