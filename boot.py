@@ -169,9 +169,12 @@ class Boot:
         if not hasattr(self, 'closures'):
             raise BootException('boot cannot be called again')
         queue = Closure.sort(self.satisfied)
-        queue.extend(self._write_values(kwargs))
+        queue.extend(_write_values(kwargs, self.variables))
         while queue:
-            queue.extend(self._call_closure(queue.pop(0)))
+            closure = queue.pop(0)
+            writeto = closure.call()
+            self.closures.pop(closure.func)
+            queue.extend(_notify_reader_writes(writeto))
         if self.closures:
             raise BootException(
                 'cannot satisfy dependency for %r' % list(self.closures))
@@ -182,22 +185,6 @@ class Boot:
         # forensic analysis.
         self._release()
         return values
-
-    def _write_values(self, kwargs):
-        """Write values of kwargs and return thus-satisfied closures."""
-        writeto = []
-        for var_name, value in kwargs.items():
-            var = self.variables[var_name]
-            var.notify_will_write()
-            var.write(value)
-            writeto.append(var)
-        return _notify_reader_writes(writeto)
-
-    def _call_closure(self, closure):
-        """Call closure and return thus-satisfied closures."""
-        writeto = closure.call()
-        self.closures.pop(closure.func)  # Mark off closure.
-        return _notify_reader_writes(writeto)
 
 
 def _parse_args(func, variables):
@@ -256,6 +243,17 @@ def _parse_ret(func, variables):
     # Be very strict about annotation format for now.
     raise BootException(
         'cannot parse return annotation \'%r\' for \'%r\'' % (anno, func))
+
+
+def _write_values(kwargs, variables):
+    """Write values of kwargs and return thus-satisfied closures."""
+    writeto = []
+    for var_name, value in kwargs.items():
+        var = variables[var_name]
+        var.notify_will_write()
+        var.write(value)
+        writeto.append(var)
+    return _notify_reader_writes(writeto)
 
 
 def _notify_reader_writes(writeto):
