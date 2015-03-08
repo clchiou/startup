@@ -1,8 +1,38 @@
 """boot
 
-This module implements a function-call graph dependency solver for
-helping modular program startup.
+This module implements a function-call dependency graph resolver
+for decoupling complex program initialization.
+
+The initialization functions are annotated with input and output
+dependencies, and boot will call them exactly once in topological
+order.
+
+Sample usage:
+
+    from boot import boot
+
+    @boot
+    def parse_argv(argv: 'argv') -> 'args':
+        args = {'config_path': argv[1]}
+        return args
+
+    @boot
+    def read_config(args: 'args') -> 'config':
+        with open(args['config_path']) as config_file:
+            return config_file.read()
+
+    def main(argv):
+        config = boot.call(argv=argv)['config']
+
+For more information, see help(boot).
 """
+
+__version__ = '0.1.0'
+
+__author__ = 'Che-Liang Chiou'
+__author_email__ = 'clchiou@gmail.com',
+__copyright__ = 'Copyright 2015, Che-Liang Chiou'
+__license__ = 'MIT'
 
 __all__ = [
     'boot',
@@ -14,8 +44,8 @@ from collections import defaultdict, namedtuple
 class Boot:
     """Boot
 
-    The Boot class implements a function-call graph dependency solver
-    for helping modular program startup.
+    The Boot class implements a function-call graph dependency resolver
+    for decoupling complex program initialization.
 
     For example, there are three modules A, B, and C where A imports
     B and B imports C.  Say you want to initialize them in the order
@@ -26,7 +56,7 @@ class Boot:
     initializer in A's initializer.  Things can get even worse when
     initializers are grouped in phases where one phase's initializers
     have to wait until all prior phases' initializers are completed.
-    This kind of problem should really be solved with a topological
+    This kind of problem should really be resolved with a topological
     sort on dependency graph.
 
     To use boot, you annotate functions with which variables they
@@ -53,17 +83,22 @@ class Boot:
     or all the values written to that variable.
 
     The fact that all readers are blocked by all writers can be used
-    to express common patterns of program startup, such as joining or
-    sequencing function calls.
+    to express common patterns of program initialization, such as
+    joining or sequencing function calls.
 
     Sample usage:
 
         from boot import boot
 
         @boot
-        def read_config(argv: 'argv') -> 'config':
-            # Read config file path from --config
-            return config
+        def parse_argv(argv: 'argv') -> 'args':
+            args = {'config_path': argv[1]}
+            return args
+
+        @boot
+        def read_config(args: 'args') -> 'config':
+            with open(args['config_path']) as config_file:
+                return config_file.read()
 
         def main(argv):
             config = boot.call(argv=argv)['config']
