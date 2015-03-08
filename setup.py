@@ -1,15 +1,21 @@
+import os.path
 from setuptools import setup
 
 import boot
 
 
+def cat(relpath):
+    """Read file contents."""
+    with open(os.path.join(os.path.dirname(__file__), relpath)) as f:
+        return f.read()
+
+
 setup(
-    name = 'boot',
+    name = 'boot.py',
     version = boot.__version__,
     description = 'A dependency graph resolver for program initialization',
 
-    # `setup.py register` complains this is not rst; just ignore it.
-    long_description = boot.__doc__,
+    long_description = cat('README.rst'),
 
     author = boot.__author__,
     author_email = boot.__author_email__,
@@ -17,7 +23,7 @@ setup(
     url = 'https://github.com/clchiou/boot',
 
     py_modules = ['boot'],
-    test_suite = 'boot_test',
+    test_suite = 'test',
 
     platforms = '*',
     classifiers = [

@@ -29,7 +29,7 @@ Sample usage:
 __version__ = '0.1.0'
 
 __author__ = 'Che-Liang Chiou'
-__author_email__ = 'clchiou@gmail.com',
+__author_email__ = 'clchiou@gmail.com'
 __copyright__ = 'Copyright 2015, Che-Liang Chiou'
 __license__ = 'MIT'
 

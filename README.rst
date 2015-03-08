@@ -1,3 +1,6 @@
+boot
+====
+
 boot implements a function-call dependency graph resolver for
 decoupling complex program initialization.
 
@@ -6,6 +9,8 @@ dependencies, and boot will call them exactly once in topological
 order.
 
 Sample usage:
+
+.. code-block:: python
 
     from boot import boot
 
@@ -22,4 +27,4 @@ Sample usage:
     def main(argv):
         config = boot.call(argv=argv)['config']
 
-For more information, see `help(boot)`.
+For more information, see ``help(boot)``.
