@@ -193,13 +193,13 @@ def _parse_args(func, variables):
     for arg_name, anno in func.__annotations__.items():
         if arg_name == 'return':
             continue
-        var, read = _parse_arg_anno(func, variables, arg_name, anno)
+        var, read = _parse_arg(func, variables, arg_name, anno)
         arg = Argument(name=arg_name, read=read)
         arg_read_var.append((arg, var))
     return arg_read_var
 
 
-def _parse_arg_anno(func, variables, arg_name, anno):
+def _parse_arg(func, variables, arg_name, anno):
     """Parse an argument's annotation."""
     if isinstance(anno, str):
         var = variables[anno]
@@ -217,8 +217,8 @@ def _parse_arg_anno(func, variables, arg_name, anno):
 
 
 def _parse_ret(func, variables):
-    """Parse func's return annotation and return either None, a var name,
-    or a tuple of var names.
+    """Parse func's return annotation and return either None, a variable,
+    or a tuple of variables.
 
     NOTE:
       * _parse_ret() also notifies variables about will-writes.
@@ -364,10 +364,10 @@ class Closure:
         kwargs = {arg.name: arg.read() for arg in self.args}
         out_value = self.func(**kwargs)
         if self.writeto is None:
-            writeto = ()
+            writeto = set()
         elif isinstance(self.writeto, Variable):
             self.writeto.write(out_value)
-            writeto = (self.writeto,)
+            writeto = {self.writeto}
         else:
             # A variable can be written multiple times, but we only
             # return a unique set of variables.

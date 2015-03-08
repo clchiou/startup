@@ -1,9 +1,10 @@
 import unittest
 
-from boot import Boot, BootException
+from boot import BootException
+from boot import Boot
 
 
-class BootTest(unittest.TestCase):
+class TestBoot(unittest.TestCase):
 
     def test_lexicographical_order(self):
         boot = Boot()
@@ -108,17 +109,26 @@ class BootTest(unittest.TestCase):
         self.assertRaises(BootException, boot, func5)
         self.assertRaises(BootException, boot, func6)
 
-    def test_unsatisfable_dependency(self):
+    def test_annotate_twice(self):
+        boot = Boot()
+        def func(): pass
+        boot(func)
+        self.assertRaises(BootException, boot, func)
+
+    def test_unsatisfable_dependency_1(self):
         boot = Boot()
         @boot
         def foo(x: ['x'], y: 'y'): pass
         self.assertRaises(BootException, boot.call, y=1)
 
+    def test_unsatisfable_dependency_2(self):
         boot = Boot()
         @boot
         def func1(_: 'x') -> 'y': pass
         @boot
-        def func2(_: 'y') -> 'x': pass
+        def func2(_: 'y') -> 'z': pass
+        @boot
+        def func3(_: 'y') -> 'x': pass
         self.assertRaises(BootException, boot.call)
 
 
