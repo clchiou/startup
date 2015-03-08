@@ -18,7 +18,7 @@ class TestBoot(unittest.TestCase):
         @boot
         def func3():
             data.append(3)
-        boot.call()
+        self.assertEqual({}, boot.call())
         self.assertEqual([1, 2, 3], data)
         # You cannot call run() again, by the way.
         self.assertRaises(BootException, boot.call)
@@ -37,7 +37,7 @@ class TestBoot(unittest.TestCase):
         @boot
         def func1(z: 'z'):
             data.append(z)
-        boot.call(x=3)
+        self.assertEqual({'x': 3, 'y': 2, 'z': 1}, boot.call(x=3))
         self.assertEqual([3, 2, 1], data)
 
     def test_join(self):
@@ -59,7 +59,7 @@ class TestBoot(unittest.TestCase):
         def func_join_1(x: ['x']):
             self.assertEqual([1, 2, 3], x)
             data.append('join')
-        boot.call()
+        self.assertEqual({'x': 3}, boot.call())
         self.assertEqual([1, 2, 3, 'join'], data)
 
     def test_multiple_return_1(self):
@@ -80,7 +80,8 @@ class TestBoot(unittest.TestCase):
         def func_y(y: 'y'):
             self.assertEqual('y-str', y)
             data.append('y')
-        boot.call()
+        self.assertEqual(
+            {'x': 'x-str', 'y': 'y-str', 'z': 'z-str'}, boot.call())
         self.assertEqual(['x', 'y', 'z'], data)
 
     def test_multiple_return_2(self):
@@ -91,8 +92,7 @@ class TestBoot(unittest.TestCase):
         @boot
         def func_collect(xs: ['x']) -> 'xs':
             return xs
-        xs = boot.call()['xs']
-        self.assertEqual([1, 3, 2], xs)
+        self.assertEqual({'xs': [1, 3, 2], 'x': 2}, boot.call())
 
     def test_wrong_annotations(self):
         boot = Boot()
@@ -112,7 +112,7 @@ class TestBoot(unittest.TestCase):
     def test_annotate_twice(self):
         boot = Boot()
         def func(): pass
-        boot(func)
+        self.assertEqual(func, boot(func))
         self.assertRaises(BootException, boot, func)
 
     def test_unsatisfable_dependency_1(self):

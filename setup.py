@@ -14,7 +14,6 @@ setup(
     name = 'boot.py',
     version = boot.__version__,
     description = 'A dependency graph resolver for program initialization',
-
     long_description = cat('README.rst'),
 
     author = boot.__author__,
