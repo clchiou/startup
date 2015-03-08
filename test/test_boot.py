@@ -61,7 +61,7 @@ class BootTest(unittest.TestCase):
         boot.call()
         self.assertEqual([1, 2, 3, 'join'], data)
 
-    def test_multiple_return(self):
+    def test_multiple_return_1(self):
         boot = Boot()
         data = []
         @boot
@@ -82,6 +82,7 @@ class BootTest(unittest.TestCase):
         boot.call()
         self.assertEqual(['x', 'y', 'z'], data)
 
+    def test_multiple_return_2(self):
         boot = Boot()
         @boot
         def func_repeat() -> ('x', 'x', 'x'):

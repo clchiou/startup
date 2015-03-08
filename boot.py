@@ -147,7 +147,7 @@ class Boot:
             raise BootException('cannot add \'%r\' twice' % func)
         arg_read_var = _parse_args(func, self.variables)
         writeto = _parse_ret(func, self.variables)
-        closure = Closure(func, [arg for arg, _ in arg_read_var], writeto)
+        closure = Closure(func, tuple(arg for arg, _ in arg_read_var), writeto)
         for _, var in arg_read_var:
             var.readers.append(closure)
         if closure.satisfied:
@@ -169,47 +169,35 @@ class Boot:
         if not hasattr(self, 'closures'):
             raise BootException('boot cannot be called again')
         queue = Closure.sort(self.satisfied)
-        # Write values in lexicographic order...
-        for var_name in sorted(kwargs):
-            self.variables[var_name].notify_will_write()
-            queue.extend(self._write_var(var_name, kwargs[var_name]))
-        # Call all the closures!
+        queue.extend(self._write_values(kwargs))
         while queue:
             queue.extend(self._call_closure(queue.pop(0)))
-        # All functions should have been called.
         if self.closures:
             raise BootException(
                 'cannot satisfy dependency for %r' % list(self.closures))
-        var_values = {
+        values = {
             name: var.read_latest() for name, var in self.variables.items()
         }
         # Call _release() on normal exit only; otherwise keep the dead body for
         # forensic analysis.
         self._release()
-        return var_values
+        return values
+
+    def _write_values(self, kwargs):
+        """Write values of kwargs and return thus-satisfied closures."""
+        writeto = []
+        for var_name, value in kwargs.items():
+            var = self.variables[var_name]
+            var.notify_will_write()
+            var.write(value)
+            writeto.append(var)
+        return _notify_reader_writes(writeto)
 
     def _call_closure(self, closure):
         """Call closure and return thus-satisfied closures."""
-        var_values = closure.call()
-        var_values.sort(key=lambda blob: blob[0])
-        satisfied = []
-        for var_name, value in var_values:
-            satisfied.extend(self._write_var(var_name, value))
+        writeto = closure.call()
         self.closures.pop(closure.func)  # Mark off closure.
-        return satisfied
-
-    def _write_var(self, var_name, value):
-        """Write variable value and return (sorted) thus-satisfied closures."""
-        var = self.variables[var_name]
-        var.write(value)
-        if not var.readable:
-            return []  # This variable is not "fully" written yet.
-        satisfied = []
-        for closure in var.readers:
-            closure.notify_read_ready()
-            if closure.satisfied:
-                satisfied.append(closure)
-        return Closure.sort(satisfied)
+        return _notify_reader_writes(writeto)
 
 
 def _parse_args(func, variables):
@@ -256,16 +244,32 @@ def _parse_ret(func, variables):
     if anno is None:
         return None
     elif isinstance(anno, str):
-        variables[anno].notify_will_write()
-        return anno
+        writeto = variables[anno]
+        writeto.notify_will_write()
+        return writeto
     elif (isinstance(anno, tuple) and
           all(isinstance(name, str) for name in anno)):
-        for name in anno:
-            variables[name].notify_will_write()
-        return anno
+        writeto = tuple(variables[name] for name in anno)
+        for var in writeto:
+            var.notify_will_write()
+        return writeto
     # Be very strict about annotation format for now.
     raise BootException(
         'cannot parse return annotation \'%r\' for \'%r\'' % (anno, func))
+
+
+def _notify_reader_writes(writeto):
+    """Notify reader closures about these writes and return a sorted
+       list of thus-satisfied closures.
+    """
+    satisfied = []
+    for var in writeto:
+        if var.readable:
+            for reader in var.readers:
+                reader.notify_read_ready()
+                if reader.satisfied:
+                    satisfied.append(reader)
+    return Closure.sort(satisfied)
 
 
 class Variable:
@@ -274,37 +278,41 @@ class Variable:
     """
 
     def __init__(self):
-        # Number of to-writes (we can only read this var until it reaches 0).
-        self.num_towrites = 0
+        # Number of writers that this variable is waiting for.
+        self.num_write_waits = 0
         # Functions that need to read this variable.
         self.readers = []
         # All past and current values.
         self.values = []
 
+    def __repr__(self):
+        return ('Variable{%d, %r, %r}' %
+                (self.num_write_waits, self.readers, self.values))
+
     def notify_will_write(self):
         """Notify that a writer will write to this variable."""
-        self.num_towrites += 1
+        self.num_write_waits += 1
 
     @property
     def readable(self):
         """True when arguments may read this variable."""
-        assert self.num_towrites >= 0
-        return self.num_towrites == 0 and self.values
+        assert self.num_write_waits >= 0, self
+        return self.num_write_waits == 0 and self.values
 
     def write(self, value):
         """Write a (new) value to this variable."""
-        assert self.num_towrites > 0
-        self.num_towrites -= 1
+        assert self.num_write_waits > 0, self
+        self.num_write_waits -= 1
         self.values.append(value)
 
     def read_latest(self):
         """Read the latest value."""
-        assert self.readable
+        assert self.readable, self
         return self.values[-1]
 
     def read_all(self):
         """Read all values."""
-        assert self.readable
+        assert self.readable, self
         return self.values
 
 
@@ -329,42 +337,50 @@ class Closure:
     def __init__(self, func, args, writeto):
         self.func = func
         self.args = args
-        # Names of variables that this function writes to.
+        # Variables that this function writes to.
         self.writeto = writeto
-        # Number of to-read arguments.
-        self.num_toreads = len(args)
+        # Number of arguments that are waiting for read-ready.
+        self.num_read_ready_waits = len(args)
+
+    def __repr__(self):
+        return 'Closure{%r, %d}' % (self.func, self.num_read_ready_waits)
 
     def _release(self):
         """Destroy self since closure can be called only once."""
         # Keep self.func because Boot still needs it.
         del self.args
         del self.writeto
-        del self.num_toreads
+        del self.num_read_ready_waits
 
     def notify_read_ready(self):
         """Notify that an argument's value is ready to be read."""
-        assert self.num_toreads > 0
-        self.num_toreads -= 1
+        assert self.num_read_ready_waits > 0, self
+        self.num_read_ready_waits -= 1
 
     @property
     def satisfied(self):
         """True if this closure's dependencies are satisfied."""
-        assert self.num_toreads >= 0
-        return self.num_toreads == 0
+        assert self.num_read_ready_waits >= 0, self
+        return self.num_read_ready_waits == 0
 
     def call(self):
-        """Call the closure and return variable values."""
-        assert self.satisfied
+        """Call the closure and return variable(s) that is written."""
+        assert self.satisfied, self
         kwargs = {arg.name: arg.read() for arg in self.args}
-        out = self.func(**kwargs)
+        out_value = self.func(**kwargs)
         if self.writeto is None:
-            var_values = []
-        elif isinstance(self.writeto, str):
-            var_values = [(self.writeto, out)]
+            writeto = ()
+        elif isinstance(self.writeto, Variable):
+            self.writeto.write(out_value)
+            writeto = (self.writeto,)
         else:
-            var_values = list(zip(self.writeto, out))
+            # A variable can be written multiple times, but we only
+            # return a unique set of variables.
+            for var, value in zip(self.writeto, out_value):
+                var.write(value)
+            writeto = set(self.writeto)
         self._release()  # Only call _release() on normal exit.
-        return var_values
+        return writeto
 
 
 class BootException(Exception):
