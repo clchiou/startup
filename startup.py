@@ -76,7 +76,7 @@ and a return value annotation must be either a ``str`` or a tuple of
 ``str``.  The flexibility is reserved for future extensions.
 """
 
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 __author__ = 'Che-Liang Chiou'
 __author_email__ = 'clchiou@gmail.com'
