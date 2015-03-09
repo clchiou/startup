@@ -4,18 +4,6 @@
 The ``Startup`` class implements a function-call graph dependency
 resolver for decoupling complex program initialization sequence.
 
-For example, ``main.py`` imports ``orm.py`` and ``orm.py`` imports
-``db.py``.  Say you want to initialize them in the order of ``db.py``,
-``main.py``, and then ``orm.py``.  Then ``main.py`` has to know that it
-transitively imports ``db.py`` and should initialize ``db.py`` before
-itself.  Things get even more complex when each module requires phases
-of initialization.  We usually end up with ``main.py`` importing all
-other modules and manually order the initializations.  I think this kind
-of problem can be better solved with topological sort on the dependency
-graphs.  Basically you annotate each module's dependencies and then
-``startup`` will resolve a stable and predictable function-call ordering
-for you.
-
 To use ``startup``, you annotate functions with which variables they
 read or write (remainder: you **must** annotate **all** non-optional
 parameters).  Then ``startup`` generates a dependency graph from the
@@ -23,26 +11,6 @@ annotations, and call them in a stable and predictable order.  Each
 function will be called exactly once, and if a function has never been
 called (due to unsatisfiable dependency), ``startup`` will raise a
 ``StartupException``.
-
-The functions that are satisfied by the same set of dependencies are
-called in lexicographical order by their module name and qualified name.
-This way, even if you change code layout and/or import order, the
-functions would still be called in the same order, and thus ``startup``
-is stable and predictable.
-
-The variables in function annotations are not real but merely ``dict``
-keys that ``startup`` stores internally (``startup`` will return this
-``dict`` after it completes all function calls).
-
-A variable may be written multiple times (if multiple functions are
-annotated to write to it).  In this case, ``startup`` will call the
-reader functions only after all writer functions are called.  The
-reader functions may choose to read the latest value (default) or all
-the values written to that variable.
-
-The fact that all readers are blocked by all writers can be used to
-express common patterns of program initialization, such as joining or
-sequencing function calls.
 
 Sample usage:
 
@@ -52,6 +20,7 @@ Sample usage:
 
     # 'argv' is the variable name that parse_argv reads from, and
     # 'args' is the variable name that parse_argv writes to.
+    # NOTE: All non-optional parameters must be annotated.
     @startup
     def parse_argv(argv: 'argv') -> 'args':
         args = {'config_path': argv[1]}
@@ -63,18 +32,58 @@ Sample usage:
             return config_file.read()
 
     def main(argv):
+        # You may provide variable values to startup, like argv in this
+        # case, and you may read variable, like config, which will be
+        # returned by startup.call().
         config = startup.call(argv=argv)['config']
 
-You **must** annotate all non-optional parameters with a variable name,
-but annotating return value is optional.  If a parameter annotation is
-of the form ``['var']``, this function will read all values written to
-that variable.  A return value annotation can be a tuple of variable
-names, and in this case, the function's return value is unpacked.
+You **must** annotate **all** non-optional parameters with a variable
+name, but annotating return value is optional.  A parameter annotation
+can be annotated in the form ``['var']``, and this function will read
+all values written to ``'var'`` (see below).  A return value annotation
+can be a tuple of variable names, which means unpacking return value.
+
+The variables in function annotations are not real but merely ``dict``
+keys that ``startup`` stores internally (``startup.call()`` will return
+this ``dict`` so that you too may read these variables).
 
 NOTE: Currently the annotation formats are very strict: A parameter
 annotation must be either a ``str`` or an one-element list of ``str``,
 and a return value annotation must be either a ``str`` or a tuple of
 ``str``.  The flexibility is reserved for future extensions.
+
+The functions that are satisfied by the same set of dependencies are
+called in lexicographical order by their module name and qualified name.
+This way, even if you change code layout and/or import order, the
+functions would still be called in the same order, and thus ``startup``
+is stable and predictable.
+
+A variable may be written multiple times (if multiple functions are
+annotated to write to it).  In this case, ``startup`` will call the
+reader functions only after all writer functions are called.  The
+reader functions may choose to read the latest value or all the values
+written to that variable (by ``['var']`` annotation form).
+
+The fact that all readers are blocked by all writers can be used to
+express common patterns of program initialization, such as joining or
+sequencing function calls.
+
+
+Why ``startup``?
+----------------
+
+Starting up a program could be complex but should not be complicated.
+For example, ``main.py`` imports ``orm.py`` and ``orm.py`` imports
+``db.py``.  Say you want to initialize them in the order of ``db.py``,
+``main.py``, and then ``orm.py``.  Then ``main.py`` has to know that it
+transitively imports ``db.py`` and should initialize ``db.py`` before
+itself.  Things get even more complex when each module requires phases
+of initialization.  We usually end up with ``main.py`` importing all
+other modules and manually order the initializations.  I think this kind
+of problem can be better solved with topological sort on the dependency
+graphs.  Basically you annotate each module's dependencies and then
+``startup`` will resolve a stable and predictable function-call ordering
+for you.
 """
 
 __version__ = '0.2.0'
