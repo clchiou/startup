@@ -3,6 +3,7 @@
 """Example of using boot to initialize a program."""
 
 import argparse
+import logging
 import sys
 
 from boot import boot
@@ -57,6 +58,7 @@ def parse_argv(parser: 'parser', argv: 'argv', _: 'opts') -> 'args':
 
 def main(argv):
     """Call boot.call() in your main()."""
+    logging.basicConfig(level=logging.INFO)
     args = boot.call(argv=argv)['args']
     if args.v:
         print('x * y = %d' % (args.x * args.y))

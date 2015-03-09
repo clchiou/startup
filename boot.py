@@ -37,7 +37,12 @@ __all__ = [
     'boot',
 ]
 
+import logging
 from collections import defaultdict, namedtuple
+
+
+LOG = logging.getLogger(__name__)
+LOG.addHandler(logging.NullHandler())
 
 
 class Boot:
@@ -150,6 +155,7 @@ class Boot:
         if closure.satisfied:
             self.satisfied.append(closure)
         self.funcs.add(func)
+        LOG.info('added %s.%s', func.__module__, func.__qualname__)
         return func
 
     def call(self, **kwargs):
@@ -165,6 +171,8 @@ class Boot:
         """
         if not hasattr(self, 'funcs'):
             raise BootException('boot cannot be called again')
+        for name, var in self.variables.items():
+            var.name = name
         queue = Closure.sort(self.satisfied)
         queue.extend(_write_values(kwargs, self.variables))
         while queue:
@@ -273,6 +281,7 @@ class Variable:
     """
 
     def __init__(self):
+        self.name = None  # Set later by Boot.call().
         # Number of writers that this variable is waiting for.
         self.num_write_waits = 0
         # Functions that need to read this variable.
@@ -299,6 +308,8 @@ class Variable:
         assert self.num_write_waits > 0, self
         self.num_write_waits -= 1
         self.values.append(value)
+        if self.readable:
+            LOG.info('%s becomes readable', self.name)
 
     def read_latest(self):
         """Read the latest value."""
@@ -361,6 +372,7 @@ class Closure:
     def call(self):
         """Call the closure and return variable(s) that is written."""
         assert self.satisfied, self
+        LOG.info('calling %s.%s', self.func.__module__, self.func.__qualname__)
         kwargs = {arg.name: arg.read() for arg in self.args}
         out_value = self.func(**kwargs)
         if self.writeto is None:
