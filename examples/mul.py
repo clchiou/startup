@@ -9,9 +9,17 @@ import sys
 from startup import startup
 
 
+# This will show what startup is doing behind the scene.
+logging.basicConfig(level=logging.INFO)
+
+
 @startup
 def create_argparser(argv: 'argv') -> 'parser':
-    """Create an ArgumentParser."""
+    """Create an ArgumentParser.
+
+    NOTE: You **must** annotate **all** non-optional parameters, which
+    in this case, is ``argv``.
+    """
     return argparse.ArgumentParser(
         prog=argv[0], description='Multiply X by Y.')
 
@@ -58,7 +66,6 @@ def parse_argv(parser: 'parser', argv: 'argv', _: 'opts') -> 'args':
 
 def main(argv):
     """Call startup.call() in your main()."""
-    logging.basicConfig(level=logging.INFO)
     args = startup.call(argv=argv)['args']
     if args.v:
         print('x * y = %d' % (args.x * args.y))

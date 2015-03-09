@@ -17,7 +17,8 @@ graphs.  Basically you annotate each module's dependencies and then
 for you.
 
 To use ``startup``, you annotate functions with which variables they
-read or write.  Then ``startup`` generates a dependency graph from the
+read or write (remainder: you **must** annotate **all** non-optional
+parameters).  Then ``startup`` generates a dependency graph from the
 annotations, and call them in a stable and predictable order.  Each
 function will be called exactly once, and if a function has never been
 called (due to unsatisfiable dependency), ``startup`` will raise a
