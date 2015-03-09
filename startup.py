@@ -1,16 +1,56 @@
 """startup
+=======
 
-This module implements a function-call dependency graph resolver
-for decoupling complex program initialization.
+The ``Startup`` class implements a function-call graph dependency
+resolver for decoupling complex program initialization sequence.
 
-The initialization functions are annotated with input and output
-dependencies, and startup will call them exactly once in topological
-order.
+For example, ``main.py`` imports ``orm.py`` and ``orm.py`` imports
+``db.py``.  Say you want to initialize them in the order of ``db.py``,
+``main.py``, and then ``orm.py``.  Then ``main.py`` has to know that it
+transitively imports ``db.py`` and should initialize ``db.py`` before
+itself.  Things get even more complex when each module requires phases
+of initialization.  We usually end up with ``main.py`` importing all
+other modules and manually order the initializations.  I think this kind
+of problem can be better solved with topological sort on the dependency
+graphs.  Basically you annotate each module's dependencies and then
+``startup`` will resolve a stable and predictable function-call ordering
+for you.
+
+To use ``startup``, you annotate functions with which variables they
+read or write.  Then ``startup`` generates a dependency graph from the
+annotations, and call them in a stable and predictable order.  Each
+function will be called exactly once, and if a function has never been
+called (due to unsatisfiable dependency), ``startup`` will raise a
+``StartupException``.
+
+The functions that are satisfied by the same set of dependencies are
+called in lexicographical order by their module name and qualified name.
+This way, even if you change code layout and/or import order, the
+functions would still be called in the same order, and thus ``startup``
+is stable and predictable.
+
+The variables in function annotations are not real but merely ``dict``
+keys that ``startup`` stores internally (``startup`` will return this
+``dict`` after it completes all function calls).
+
+A variable may be written multiple times (if multiple functions are
+annotated to write to it).  In this case, ``startup`` will call the
+reader functions only after all writer functions are called.  The
+reader functions may choose to read the latest value (default) or all
+the values written to that variable.
+
+The fact that all readers are blocked by all writers can be used to
+express common patterns of program initialization, such as joining or
+sequencing function calls.
 
 Sample usage:
 
+.. code-block:: python
+
     from startup import startup
 
+    # 'argv' is the variable name that parse_argv reads from, and
+    # 'args' is the variable name that parse_argv writes to.
     @startup
     def parse_argv(argv: 'argv') -> 'args':
         args = {'config_path': argv[1]}
@@ -24,6 +64,16 @@ Sample usage:
     def main(argv):
         config = startup.call(argv=argv)['config']
 
+You **must** annotate all non-optional parameters with a variable name,
+but annotating return value is optional.  If a parameter annotation is
+of the form ``['var']``, this function will read all values written to
+that variable.  A return value annotation can be a tuple of variable
+names, and in this case, the function's return value is unpacked.
+
+NOTE: Currently the annotation formats are very strict: A parameter
+annotation must be either a ``str`` or an one-element list of ``str``,
+and a return value annotation must be either a ``str`` or a tuple of
+``str``.  The flexibility is reserved for future extensions.
 """
 
 __version__ = '0.1.0'
@@ -46,83 +96,14 @@ LOG.addHandler(logging.NullHandler())
 
 
 class Startup:
-    """Startup
-
-    The Startup class implements a function-call graph dependency resolver
-    for decoupling complex program initialization.
-
-    For example, there are three modules A, B, and C where A imports
-    B and B imports C.  Say you want to initialize them in the order
-    of C, A, and the B.  Then A's initializer has to know that itself
-    transitively imports C and it has to call C's initializer before
-    calling its and then B's initializer.  We usually end up with A
-    importing all its transitive closure and calling each module's
-    initializer in A's initializer.  Things can get even worse when
-    initializers are grouped in phases where one phase's initializers
-    have to wait until all prior phases' initializers are completed.
-    This kind of problem should really be resolved with a topological
-    sort on dependency graph.
-
-    To use startup, you annotate functions with which variables they
-    read or write.  Then startup generates a dependency graph from the
-    annotations, and call them in a stable and predictable order.
-    Each function will be called exactly once, and if a function has
-    never been called (due to unsatisfiable dependency), startup will
-    raise a StartupException.
-
-    The functions that are satisfied by the same set of dependencies
-    are called in lexicographical order by their module name and
-    qualified name.  This way, even if you change code layout and/or
-    import order, the functions should still be called in the same
-    order, and thus startup is stable and predictable.
-
-    The variables are not real but merely values that startup stores
-    internally in a dict (startup will return a variable dict after it
-    finishes calling all the functions).
-
-    A variable may be written multiple times (if multiple functions
-    are annotated to write to it).  In this case, startup will call the
-    reader functions only after all writer functions are called.  The
-    reader functions may choose to read the latest value (default)
-    or all the values written to that variable.
-
-    The fact that all readers are blocked by all writers can be used
-    to express common patterns of program initialization, such as
-    joining or sequencing function calls.
-
-    Sample usage:
-
-        from startup import startup
-
-        @startup
-        def parse_argv(argv: 'argv') -> 'args':
-            args = {'config_path': argv[1]}
-            return args
-
-        @startup
-        def read_config(args: 'args') -> 'config':
-            with open(args['config_path']) as config_file:
-                return config_file.read()
-
-        def main(argv):
-            config = startup.call(argv=argv)['config']
-
-    You must annotate every non-optional parameter with a variable name.
-    Annotating return value is optional.  If a parameter annotation is
-    of the form ['var'], this function will read all values written to
-    that variable.  A return value annotation can be a tuple of variable
-    names, and in this case, the function's return value is unpacked.
-
-    NOTE: Currently the annotation formats are very strict: A parameter
-    annotation must be either a str or an one-element list of str, and
-    a return value annotation must be either a str or a tuple of str.
-    We reserve the flexibility for future extensions.
-    """
+    """See ``help(startup)``."""
 
     def __init__(self):
-        """Create a Startup object.
+        """Create a ``Startup`` object.
 
-        You usually just use the global Startup object:
+        You usually just use the global ``Startup`` object:
+
+        .. code-block:: python
 
             from startup import startup
 
@@ -138,10 +119,10 @@ class Startup:
         del self.satisfied
 
     def __call__(self, func):
-        """Add func to this Startup object's dependency graph (a Startup
-        object is usually used as a decorator).
+        """Add ``func`` to this ``Startup`` object's dependency graph
+        (a ``Startup`` object is usually used as a decorator).
 
-        NOTE: func's non-optional parameters must be annotated.
+        NOTE: ``func``'s non-optional parameters **must** be annotated.
         """
         if not callable(func):
             raise StartupException('\'%r\' is not callable' % func)
@@ -159,15 +140,15 @@ class Startup:
         return func
 
     def call(self, **kwargs):
-        """Call all the functions that have previously been added to
-        the dependency graph in topological and lexicographical
-        order, and then return variables in a dict.
+        """Call all the functions that have previously been added to the
+        dependency graph in topological and lexicographical order, and
+        then return variables in a ``dict``.
 
-        You may provide variable values with keyword arguments.
-        These values will be written and can satisfy dependencies.
+        You may provide variable values with keyword arguments.  These
+        values will be written and can satisfy dependencies.
 
-        NOTE: This object will be in a "destroyed" state after
-        this function returns and should not be used.
+        NOTE: This object will be **destroyed** after ``call()`` returns
+        and should not be used any further.
         """
         if not hasattr(self, 'funcs'):
             raise StartupException('startup cannot be called again')
@@ -190,6 +171,9 @@ class Startup:
         # forensic analysis.
         self._release()
         return values
+
+
+Startup.__doc__ = __doc__  # Sync __doc__ contents.  DRY!
 
 
 def _parse_args(func, variables):

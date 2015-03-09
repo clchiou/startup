@@ -1,20 +1,13 @@
-import os.path
 from setuptools import setup
 
 import startup
-
-
-def cat(relpath):
-    """Read file contents."""
-    with open(os.path.join(os.path.dirname(__file__), relpath)) as f:
-        return f.read()
 
 
 setup(
     name = 'startup',
     version = startup.__version__,
     description = 'A dependency graph resolver for program startup',
-    long_description = cat('README.rst'),
+    long_description = startup.__doc__,
 
     author = startup.__author__,
     author_email = startup.__author_email__,
