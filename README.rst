@@ -1,30 +1,29 @@
-boot
-====
+startup
+=======
 
-boot implements a function-call dependency graph resolver for
-decoupling complex program initialization.
+``startup`` implements a function-call dependency graph resolver
+for decoupling complex program startup.
 
-The initialization functions are annotated with input and output
-dependencies, and boot will call them exactly once in topological
-order.
+Functions are annotated with input and output dependencies, and
+``startup`` will call them exactly once in topological order.
 
 Sample usage:
 
 .. code-block:: python
 
-    from boot import boot
+    from startup import startup
 
-    @boot
+    @startup
     def parse_argv(argv: 'argv') -> 'args':
         args = {'config_path': argv[1]}
         return args
 
-    @boot
+    @startup
     def read_config(args: 'args') -> 'config':
         with open(args['config_path']) as config_file:
             return config_file.read()
 
     def main(argv):
-        config = boot.call(argv=argv)['config']
+        config = startup.call(argv=argv)['config']
 
-For more information, see ``help(boot)``.
+For more information, see ``help(startup)``.

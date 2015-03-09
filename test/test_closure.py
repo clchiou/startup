@@ -2,7 +2,7 @@ import itertools
 import random
 import unittest
 
-from boot import Argument, Closure, Variable
+from startup import Argument, Closure, Variable
 
 
 class TestClosure(unittest.TestCase):

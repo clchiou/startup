@@ -1,28 +1,28 @@
-"""boot
+"""startup
 
 This module implements a function-call dependency graph resolver
 for decoupling complex program initialization.
 
 The initialization functions are annotated with input and output
-dependencies, and boot will call them exactly once in topological
+dependencies, and startup will call them exactly once in topological
 order.
 
 Sample usage:
 
-    from boot import boot
+    from startup import startup
 
-    @boot
+    @startup
     def parse_argv(argv: 'argv') -> 'args':
         args = {'config_path': argv[1]}
         return args
 
-    @boot
+    @startup
     def read_config(args: 'args') -> 'config':
         with open(args['config_path']) as config_file:
             return config_file.read()
 
     def main(argv):
-        config = boot.call(argv=argv)['config']
+        config = startup.call(argv=argv)['config']
 
 """
 
@@ -34,7 +34,7 @@ __copyright__ = 'Copyright 2015, Che-Liang Chiou'
 __license__ = 'MIT'
 
 __all__ = [
-    'boot',
+    'startup',
 ]
 
 import logging
@@ -45,10 +45,10 @@ LOG = logging.getLogger(__name__)
 LOG.addHandler(logging.NullHandler())
 
 
-class Boot:
-    """Boot
+class Startup:
+    """Startup
 
-    The Boot class implements a function-call graph dependency resolver
+    The Startup class implements a function-call graph dependency resolver
     for decoupling complex program initialization.
 
     For example, there are three modules A, B, and C where A imports
@@ -63,25 +63,25 @@ class Boot:
     This kind of problem should really be resolved with a topological
     sort on dependency graph.
 
-    To use boot, you annotate functions with which variables they
-    read or write.  Then boot generates a dependency graph from the
+    To use startup, you annotate functions with which variables they
+    read or write.  Then startup generates a dependency graph from the
     annotations, and call them in a stable and predictable order.
     Each function will be called exactly once, and if a function has
-    never been called (due to unsatisfiable dependency), boot will
-    raise a BootException.
+    never been called (due to unsatisfiable dependency), startup will
+    raise a StartupException.
 
     The functions that are satisfied by the same set of dependencies
     are called in lexicographical order by their module name and
     qualified name.  This way, even if you change code layout and/or
     import order, the functions should still be called in the same
-    order, and thus boot is stable and predictable.
+    order, and thus startup is stable and predictable.
 
-    The variables are not real but merely values that boot stores
-    internally in a dict (boot will return a variable dict after it
+    The variables are not real but merely values that startup stores
+    internally in a dict (startup will return a variable dict after it
     finishes calling all the functions).
 
     A variable may be written multiple times (if multiple functions
-    are annotated to write to it).  In this case, boot will call the
+    are annotated to write to it).  In this case, startup will call the
     reader functions only after all writer functions are called.  The
     reader functions may choose to read the latest value (default)
     or all the values written to that variable.
@@ -92,20 +92,20 @@ class Boot:
 
     Sample usage:
 
-        from boot import boot
+        from startup import startup
 
-        @boot
+        @startup
         def parse_argv(argv: 'argv') -> 'args':
             args = {'config_path': argv[1]}
             return args
 
-        @boot
+        @startup
         def read_config(args: 'args') -> 'config':
             with open(args['config_path']) as config_file:
                 return config_file.read()
 
         def main(argv):
-            config = boot.call(argv=argv)['config']
+            config = startup.call(argv=argv)['config']
 
     You must annotate every non-optional parameter with a variable name.
     Annotating return value is optional.  If a parameter annotation is
@@ -120,11 +120,11 @@ class Boot:
     """
 
     def __init__(self):
-        """Create a Boot object.
+        """Create a Startup object.
 
-        You usually just use the global Boot object:
+        You usually just use the global Startup object:
 
-            from boot import boot
+            from startup import startup
 
         """
         self.funcs = set()
@@ -138,15 +138,15 @@ class Boot:
         del self.satisfied
 
     def __call__(self, func):
-        """Add func to this Boot object's dependency graph (a Boot
+        """Add func to this Startup object's dependency graph (a Startup
         object is usually used as a decorator).
 
         NOTE: func's non-optional parameters must be annotated.
         """
         if not callable(func):
-            raise BootException('\'%r\' is not callable' % func)
+            raise StartupException('\'%r\' is not callable' % func)
         if func in self.funcs:
-            raise BootException('cannot add \'%r\' twice' % func)
+            raise StartupException('cannot add \'%r\' twice' % func)
         arg_read_var = _parse_args(func, self.variables)
         writeto = _parse_ret(func, self.variables)
         closure = Closure(func, tuple(arg for arg, _ in arg_read_var), writeto)
@@ -170,7 +170,7 @@ class Boot:
         this function returns and should not be used.
         """
         if not hasattr(self, 'funcs'):
-            raise BootException('boot cannot be called again')
+            raise StartupException('startup cannot be called again')
         for name, var in self.variables.items():
             var.name = name
         queue = Closure.sort(self.satisfied)
@@ -181,7 +181,7 @@ class Boot:
             self.funcs.remove(closure.func)
             queue.extend(_notify_reader_writes(writeto))
         if self.funcs:
-            raise BootException(
+            raise StartupException(
                 'cannot satisfy dependency for %r' % self.funcs)
         values = {
             name: var.read_latest() for name, var in self.variables.items()
@@ -219,7 +219,7 @@ def _parse_arg(func, variables, arg_name, anno):
     # For now, be very strict about annotation format (e.g.,
     # allow list but not tuple) because we might want to use
     # tuple for other meanings in the future.
-    raise BootException(
+    raise StartupException(
         'cannot parse annotation \'%r\' of \'%s\' for \'%r\'' %
         (anno, arg_name, func))
 
@@ -246,7 +246,7 @@ def _parse_ret(func, variables):
             var.notify_will_write()
         return writeto
     # Be very strict about annotation format for now.
-    raise BootException(
+    raise StartupException(
         'cannot parse return annotation \'%r\' for \'%r\'' % (anno, func))
 
 
@@ -281,7 +281,7 @@ class Variable:
     """
 
     def __init__(self):
-        self.name = None  # Set later by Boot.call().
+        self.name = None  # Set later by Startup.call().
         # Number of writers that this variable is waiting for.
         self.num_write_waits = 0
         # Functions that need to read this variable.
@@ -353,7 +353,7 @@ class Closure:
 
     def _release(self):
         """Destroy self since closure can be called only once."""
-        # Keep self.func because Boot still needs it.
+        # Keep self.func because Startup still needs it.
         del self.args
         del self.writeto
         del self.num_read_ready_waits
@@ -390,9 +390,9 @@ class Closure:
         return writeto
 
 
-class BootException(Exception):
-    """A generic error of boot."""
+class StartupException(Exception):
+    """A generic error of startup."""
 
 
-# The global boot object.
-boot = Boot()
+# The global startup object.
+startup = Startup()

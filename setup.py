@@ -1,7 +1,7 @@
 import os.path
 from setuptools import setup
 
-import boot
+import startup
 
 
 def cat(relpath):
@@ -11,17 +11,17 @@ def cat(relpath):
 
 
 setup(
-    name = 'boot.py',
-    version = boot.__version__,
-    description = 'A dependency graph resolver for program initialization',
+    name = 'startup',
+    version = startup.__version__,
+    description = 'A dependency graph resolver for program startup',
     long_description = cat('README.rst'),
 
-    author = boot.__author__,
-    author_email = boot.__author_email__,
-    license = boot.__license__,
-    url = 'https://github.com/clchiou/boot',
+    author = startup.__author__,
+    author_email = startup.__author_email__,
+    license = startup.__license__,
+    url = 'https://github.com/clchiou/startup',
 
-    py_modules = ['boot'],
+    py_modules = ['startup'],
     test_suite = 'test',
 
     platforms = '*',

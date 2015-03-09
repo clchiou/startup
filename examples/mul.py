@@ -1,22 +1,22 @@
 #!/usr/bin/evn python3
 
-"""Example of using boot to initialize a program."""
+"""Example of using startup to initialize a program."""
 
 import argparse
 import logging
 import sys
 
-from boot import boot
+from startup import startup
 
 
-@boot
+@startup
 def create_argparser(argv: 'argv') -> 'parser':
     """Create an ArgumentParser."""
     return argparse.ArgumentParser(
         prog=argv[0], description='Multiply X by Y.')
 
 
-@boot
+@startup
 def add_argument_verbose(parser: 'parser') -> 'basic_opts':
     """Add -v to the argument parser.
 
@@ -25,13 +25,13 @@ def add_argument_verbose(parser: 'parser') -> 'basic_opts':
     parser.add_argument('-v', action='count', help='enable additional output')
 
 
-@boot
+@startup
 def add_argument_x(parser: 'parser', _: 'basic_opts') -> 'opts':
     """Add -x argument.
 
     The dependencies of add_argument_{x,y} are satisfied at the same
-    time, and in this case, boot calls them in lexicographical order
-    by their names (not the order that they are added to boot, which
+    time, and in this case, startup calls them in lexicographical order
+    by their names (not the order that they are added to startup, which
     varies when you reorder imports).  This should provide a stable
     and predictable function-call order.
     """
@@ -39,14 +39,14 @@ def add_argument_x(parser: 'parser', _: 'basic_opts') -> 'opts':
         '-x', type=int, default=0, help='set x value (default to %(default)s)')
 
 
-@boot
+@startup
 def add_argument_y(parser: 'parser', _: 'basic_opts') -> 'opts':
     """Add -y argument."""
     parser.add_argument(
         '-y', type=int, default=0, help='set y value (default to %(default)s)')
 
 
-@boot
+@startup
 def parse_argv(parser: 'parser', argv: 'argv', _: 'opts') -> 'args':
     """Parse argv.
 
@@ -57,9 +57,9 @@ def parse_argv(parser: 'parser', argv: 'argv', _: 'opts') -> 'args':
 
 
 def main(argv):
-    """Call boot.call() in your main()."""
+    """Call startup.call() in your main()."""
     logging.basicConfig(level=logging.INFO)
-    args = boot.call(argv=argv)['args']
+    args = startup.call(argv=argv)['args']
     if args.v:
         print('x * y = %d' % (args.x * args.y))
     else:
@@ -67,11 +67,11 @@ def main(argv):
     return 0
 
 
-@boot
+@startup
 def collect_opts(all_opts: ['opts']) -> 'all_opts':
     """Collect values of variable opts.
 
-    boot.call returns a dict of variables' last value.  This is usually good
+    startup.call returns a dict of variables' last value.  This is usually good
     enough (such as getting 'args' value in main).  If in cases you need all
     the values of a variable, you may collect them like here.
 

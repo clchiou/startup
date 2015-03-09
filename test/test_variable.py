@@ -1,6 +1,6 @@
 import unittest
 
-from boot import Variable
+from startup import Variable
 
 
 class TestVariable(unittest.TestCase):
