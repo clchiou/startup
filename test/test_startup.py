@@ -6,6 +6,21 @@ from startup import Startup
 
 class TestStartup(unittest.TestCase):
 
+    def test_annotate_all_nonoptional_parameters(self):
+        startup = Startup()
+        def func1(x): pass
+        def func2(x, y=1): pass
+        def func3(x, y=1, z=2): pass
+        def func4(*, a): pass
+        def func5(*, a, b=1): pass
+        def func6(*, a, b=1, c=2): pass
+        self.assertRaises(StartupException, startup, func1)
+        self.assertRaises(StartupException, startup, func2)
+        self.assertRaises(StartupException, startup, func3)
+        self.assertRaises(StartupException, startup, func4)
+        self.assertRaises(StartupException, startup, func5)
+        self.assertRaises(StartupException, startup, func6)
+
     def test_lexicographical_order(self):
         startup = Startup()
         data = []

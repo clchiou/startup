@@ -97,6 +97,7 @@ __all__ = [
     'startup',
 ]
 
+import inspect
 import logging
 from collections import defaultdict, namedtuple
 
@@ -135,9 +136,14 @@ class Startup:
         NOTE: ``func``'s non-optional parameters **must** be annotated.
         """
         if not callable(func):
-            raise StartupException('\'%r\' is not callable' % func)
+            raise StartupException('%r is not callable' % func)
         if func in self.funcs:
-            raise StartupException('cannot add \'%r\' twice' % func)
+            raise StartupException('cannot add %r twice' % func)
+        not_annotated = _get_not_annotated(func)
+        if not_annotated:
+            raise StartupException(
+                'non-optional parameters %r of %r are not annotated' %
+                (not_annotated, func))
         arg_read_var = _parse_args(func, self.variables)
         writeto = _parse_ret(func, self.variables)
         closure = Closure(func, tuple(arg for arg, _ in arg_read_var), writeto)
@@ -188,6 +194,18 @@ class Startup:
 Startup.__doc__ = __doc__  # Sync __doc__ contents.  DRY!
 
 
+def _get_not_annotated(func):
+    """Return non-optional parameters that are not annotated."""
+    argspec = inspect.getfullargspec(func)
+    args = argspec.args
+    if argspec.defaults is not None:
+        args = args[:-len(argspec.defaults)]
+    kwonlyargs = argspec.kwonlyargs
+    if argspec.kwonlydefaults is not None:
+        kwonlyargs = kwonlyargs[:-len(argspec.kwonlydefaults)]
+    return [arg for arg in args + kwonlyargs if arg not in argspec.annotations]
+
+
 def _parse_args(func, variables):
     """Return a list of arguments with the variable it reads.
 
@@ -216,7 +234,7 @@ def _parse_arg(func, variables, arg_name, anno):
     # allow list but not tuple) because we might want to use
     # tuple for other meanings in the future.
     raise StartupException(
-        'cannot parse annotation \'%r\' of \'%s\' for \'%r\'' %
+        'cannot parse annotation %r of parameter %r for %r' %
         (anno, arg_name, func))
 
 
@@ -243,7 +261,7 @@ def _parse_ret(func, variables):
         return writeto
     # Be very strict about annotation format for now.
     raise StartupException(
-        'cannot parse return annotation \'%r\' for \'%r\'' % (anno, func))
+        'cannot parse return annotation %r for %r' % (anno, func))
 
 
 def _write_values(kwargs, variables):
