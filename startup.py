@@ -164,6 +164,8 @@ class Startup:
             raise StartupException('startup cannot be called again')
         for name, var in self.variables.items():
             var.name = name
+        for name in kwargs:
+            self.variables[name].name = name
         queue = Closure.sort(self.satisfied)
         queue.extend(_write_values(kwargs, self.variables))
         while queue:
