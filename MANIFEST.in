@@ -1,2 +1,12 @@
+include LICENSE
+include MANIFEST.in
 include README.py
-recursive-include examples *.py
+include README.rst
+include examples/mul.py
+include gen_manifest.sh
+include setup.py
+include test/__init__.py
+include test/test_closure.py
+include test/test_parse.py
+include test/test_startup.py
+include test/test_variable.py

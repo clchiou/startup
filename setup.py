@@ -1,6 +1,10 @@
+import subprocess
 from setuptools import setup
 
 import startup
+
+
+subprocess.check_call('./gen_manifest.sh')
 
 
 setup(
