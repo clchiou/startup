@@ -146,6 +146,39 @@ class StartupTest(unittest.TestCase):
         def func3(_: 'y') -> 'x': pass
         self.assertRaises(StartupException, startup.call)
 
+    def test_set_variable(self):
+
+        def func1(_: '#x') -> '#y': return 2
+        def func2(_: '#x') -> '#z': return 3
+
+        startup = Startup()
+        startup.set('#x', 1)
+        self.assertDictEqual({'#x': 1}, startup.call())
+
+        # Call Startup.set() before registering functions.
+        startup = Startup()
+        startup.set('#x', 1)
+        startup.set('#z', 0)
+        startup(func1)
+        startup(func2)
+        self.assertDictEqual({'#x': 1, '#y': 2, '#z': 3}, startup.call())
+
+        # Call Startup.set() after registering functions.
+        startup = Startup()
+        startup(func1)
+        startup(func2)
+        startup.set('#x', 1)
+        startup.set('#z', 0)
+        self.assertDictEqual({'#x': 1, '#y': 2, '#z': 3}, startup.call())
+
+        # Overwrite Startup.set().
+        startup = Startup()
+        startup.set('x', 1)
+        self.assertDictEqual({'x': 2}, startup.call(x=2))
+
+        with self.assertRaises(StartupException):
+            startup.set('v', 1)
+
 
 if __name__ == '__main__':
     unittest.main()

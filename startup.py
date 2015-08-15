@@ -121,12 +121,14 @@ class Startup:
         """
         self.funcs = set()
         self.variables = defaultdict(Variable)
+        self.variable_values = {}
         self.satisfied = []
 
     def _release(self):
         """Destroy self since closures cannot be called again."""
         del self.funcs
         del self.variables
+        del self.variable_values
         del self.satisfied
 
     def __call__(self, func):
@@ -155,6 +157,12 @@ class Startup:
         LOG.info('added %s.%s', func.__module__, func.__qualname__)
         return func
 
+    def set(self, name, value):
+        """Set a variable before ``call()``."""
+        if not hasattr(self, 'funcs'):
+            raise StartupException('startup cannot be called again')
+        self.variable_values[name] = value
+
     def call(self, **kwargs):
         """Call all the functions that have previously been added to the
         dependency graph in topological and lexicographical order, and
@@ -170,10 +178,11 @@ class Startup:
             raise StartupException('startup cannot be called again')
         for name, var in self.variables.items():
             var.name = name
-        for name in kwargs:
+        self.variable_values.update(kwargs)
+        for name in self.variable_values:
             self.variables[name].name = name
         queue = Closure.sort(self.satisfied)
-        queue.extend(_write_values(kwargs, self.variables))
+        queue.extend(_write_values(self.variable_values, self.variables))
         while queue:
             closure = queue.pop(0)
             writeto = closure.call()
