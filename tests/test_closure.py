@@ -5,7 +5,7 @@ import unittest
 from startup import Argument, Closure, Variable
 
 
-class TestClosure(unittest.TestCase):
+class ClosureTest(unittest.TestCase):
 
     class Inner:
         def foo(self):
@@ -23,7 +23,7 @@ class TestClosure(unittest.TestCase):
 
     @staticmethod
     def as_closures(funcs):
-        return [TestClosure.closure(func) for func in funcs]
+        return [ClosureTest.closure(func) for func in funcs]
 
     @staticmethod
     def as_funcs(closures):
@@ -39,25 +39,25 @@ class TestClosure(unittest.TestCase):
 
     def test_key(self):
         self.assertEqual(
-            ('test.test_closure', 'TestClosure.Inner.foo'),
-            Closure._key(self.closure(TestClosure.Inner.foo)))
+            ('tests.test_closure', 'ClosureTest.Inner.foo'),
+            Closure._key(self.closure(ClosureTest.Inner.foo)))
 
         self.assertEqual(
-            ('test.test_closure', 'TestClosure.Inner'),
-            Closure._key(self.closure(TestClosure.Inner)))
+            ('tests.test_closure', 'ClosureTest.Inner'),
+            Closure._key(self.closure(ClosureTest.Inner)))
 
     def test_sort(self):
         self.assertEqual([], Closure.sort([]))
 
-        funcs = [TestClosure.Inner.foo]
+        funcs = [ClosureTest.Inner.foo]
         self.assertEqual(
             funcs, self.as_funcs(Closure.sort(self.as_closures(funcs))))
 
         funcs = [
-            TestClosure.Inner.bar,
-            TestClosure.Inner.foo,
-            TestClosure.Inner.spam,
-            TestClosure.Inner.viz,
+            ClosureTest.Inner.bar,
+            ClosureTest.Inner.foo,
+            ClosureTest.Inner.spam,
+            ClosureTest.Inner.viz,
         ]
         closures = self.as_closures(funcs)
         random.shuffle(closures)
@@ -83,7 +83,7 @@ class TestClosure(unittest.TestCase):
             self.assertEqual(set(writeto), closure.call())
 
     def test_writeto(self):
-        inner = TestClosure.Inner()
+        inner = ClosureTest.Inner()
         closure = Closure(inner.bar, (), None)
         self.assertTrue(closure.satisfied)
         self.assertEqual(set(), closure.call())

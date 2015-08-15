@@ -3,7 +3,7 @@ import unittest
 from startup import Variable
 
 
-class TestVariable(unittest.TestCase):
+class VariableTest(unittest.TestCase):
 
     def test_variable(self):
         var = Variable()

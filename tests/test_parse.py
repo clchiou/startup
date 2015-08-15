@@ -5,7 +5,7 @@ from startup import StartupException
 from startup import Variable
 
 
-class TestParseArgs(unittest.TestCase):
+class ParseArgsTest(unittest.TestCase):
 
     def test_parse_args_0(self):
         func = Mock({'return': 'y'})
@@ -73,7 +73,7 @@ class TestParseArgs(unittest.TestCase):
             StartupException, startup._parse_args, func, {})
 
 
-class TestParseRet(unittest.TestCase):
+class ParseRetTest(unittest.TestCase):
 
     def test_parse_ret_0(self):
         func = Mock({})

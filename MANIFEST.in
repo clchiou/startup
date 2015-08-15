@@ -5,8 +5,8 @@ include README.rst
 include examples/mul.py
 include gen_manifest.sh
 include setup.py
-include test/__init__.py
-include test/test_closure.py
-include test/test_parse.py
-include test/test_startup.py
-include test/test_variable.py
+include tests/__init__.py
+include tests/test_closure.py
+include tests/test_parse.py
+include tests/test_startup.py
+include tests/test_variable.py

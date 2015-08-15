@@ -19,7 +19,7 @@ setup(
     url = 'https://github.com/clchiou/startup',
 
     py_modules = ['startup'],
-    test_suite = 'test',
+    test_suite = 'tests',
 
     platforms = '*',
     classifiers = [

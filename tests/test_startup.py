@@ -4,7 +4,7 @@ from startup import StartupException
 from startup import Startup
 
 
-class TestStartup(unittest.TestCase):
+class StartupTest(unittest.TestCase):
 
     def test_annotate_all_nonoptional_parameters(self):
         startup = Startup()
