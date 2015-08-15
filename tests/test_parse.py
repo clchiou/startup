@@ -1,7 +1,7 @@
 import unittest
 
 import startup
-from startup import StartupException
+from startup import StartupError
 from startup import Variable
 
 
@@ -62,15 +62,15 @@ class ParseArgsTest(unittest.TestCase):
     def test_wrong_anno(self):
         func = Mock({'x': ['x', 'y']})
         self.assertRaises(
-            StartupException, startup._parse_args, func, {})
+            StartupError, startup._parse_args, func, {})
 
         func = Mock({'x': 1})
         self.assertRaises(
-            StartupException, startup._parse_args, func, {})
+            StartupError, startup._parse_args, func, {})
 
         func = Mock({'x': ('x',)})
         self.assertRaises(
-            StartupException, startup._parse_args, func, {})
+            StartupError, startup._parse_args, func, {})
 
 
 class ParseRetTest(unittest.TestCase):
@@ -98,15 +98,15 @@ class ParseRetTest(unittest.TestCase):
     def test_wrong_anno(self):
         func = Mock({'return': 1})
         self.assertRaises(
-            StartupException, startup._parse_ret, func, {})
+            StartupError, startup._parse_ret, func, {})
 
         func = Mock({'return': ['x']})
         self.assertRaises(
-            StartupException, startup._parse_ret, func, {})
+            StartupError, startup._parse_ret, func, {})
 
         func = Mock({'return': ['x', 'y']})
         self.assertRaises(
-            StartupException, startup._parse_ret, func, {})
+            StartupError, startup._parse_ret, func, {})
 
 
 class Mock:
@@ -116,4 +116,3 @@ class Mock:
 
 if __name__ == '__main__':
     unittest.main()
-

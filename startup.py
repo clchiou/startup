@@ -10,7 +10,7 @@ parameters).  Then ``startup`` generates a dependency graph from the
 annotations, and call them in a stable and predictable order.  Each
 function will be called exactly once, and if a function has never been
 called (due to unsatisfiable dependency), ``startup`` will raise a
-``StartupException``.
+``StartupError``.
 
 Sample usage:
 
@@ -94,6 +94,8 @@ __copyright__ = 'Copyright 2015, Che-Liang Chiou'
 __license__ = 'MIT'
 
 __all__ = [
+    'StartupError',
+    'Startup',
     'startup',
 ]
 
@@ -104,6 +106,10 @@ from collections import defaultdict, namedtuple
 
 LOG = logging.getLogger(__name__)
 LOG.addHandler(logging.NullHandler())
+
+
+class StartupError(Exception):
+    """A generic error of startup."""
 
 
 class Startup:
@@ -138,12 +144,12 @@ class Startup:
         NOTE: ``func``'s non-optional parameters **must** be annotated.
         """
         if not callable(func):
-            raise StartupException('%r is not callable' % func)
+            raise StartupError('%r is not callable' % func)
         if func in self.funcs:
-            raise StartupException('cannot add %r twice' % func)
+            raise StartupError('cannot add %r twice' % func)
         not_annotated = _get_not_annotated(func)
         if not_annotated:
-            raise StartupException(
+            raise StartupError(
                 'non-optional parameters %r of %r are not annotated' %
                 (not_annotated, func))
         arg_read_var = _parse_args(func, self.variables)
@@ -160,7 +166,7 @@ class Startup:
     def set(self, name, value):
         """Set a variable before ``call()``."""
         if not hasattr(self, 'funcs'):
-            raise StartupException('startup cannot be called again')
+            raise StartupError('startup cannot be called again')
         self.variable_values[name] = value
 
     def call(self, **kwargs):
@@ -175,7 +181,7 @@ class Startup:
         and should not be used any further.
         """
         if not hasattr(self, 'funcs'):
-            raise StartupException('startup cannot be called again')
+            raise StartupError('startup cannot be called again')
         for name, var in self.variables.items():
             var.name = name
         self.variable_values.update(kwargs)
@@ -189,8 +195,7 @@ class Startup:
             self.funcs.remove(closure.func)
             queue.extend(_notify_reader_writes(writeto))
         if self.funcs:
-            raise StartupException(
-                'cannot satisfy dependency for %r' % self.funcs)
+            raise StartupError('cannot satisfy dependency for %r' % self.funcs)
         values = {
             name: var.read_latest() for name, var in self.variables.items()
         }
@@ -242,7 +247,7 @@ def _parse_arg(func, variables, arg_name, anno):
     # For now, be very strict about annotation format (e.g.,
     # allow list but not tuple) because we might want to use
     # tuple for other meanings in the future.
-    raise StartupException(
+    raise StartupError(
         'cannot parse annotation %r of parameter %r for %r' %
         (anno, arg_name, func))
 
@@ -269,7 +274,7 @@ def _parse_ret(func, variables):
             var.notify_will_write()
         return writeto
     # Be very strict about annotation format for now.
-    raise StartupException(
+    raise StartupError(
         'cannot parse return annotation %r for %r' % (anno, func))
 
 
@@ -411,10 +416,6 @@ class Closure:
             writeto = set(self.writeto)
         self._release()  # Only call _release() on normal exit.
         return writeto
-
-
-class StartupException(Exception):
-    """A generic error of startup."""
 
 
 # The global startup object.

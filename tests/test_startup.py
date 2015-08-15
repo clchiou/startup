@@ -1,6 +1,6 @@
 import unittest
 
-from startup import StartupException
+from startup import StartupError
 from startup import Startup
 
 
@@ -14,12 +14,12 @@ class StartupTest(unittest.TestCase):
         def func4(*, a): pass
         def func5(*, a, b=1): pass
         def func6(*, a, b=1, c=2): pass
-        self.assertRaises(StartupException, startup, func1)
-        self.assertRaises(StartupException, startup, func2)
-        self.assertRaises(StartupException, startup, func3)
-        self.assertRaises(StartupException, startup, func4)
-        self.assertRaises(StartupException, startup, func5)
-        self.assertRaises(StartupException, startup, func6)
+        self.assertRaises(StartupError, startup, func1)
+        self.assertRaises(StartupError, startup, func2)
+        self.assertRaises(StartupError, startup, func3)
+        self.assertRaises(StartupError, startup, func4)
+        self.assertRaises(StartupError, startup, func5)
+        self.assertRaises(StartupError, startup, func6)
 
     def test_lexicographical_order(self):
         startup = Startup()
@@ -36,7 +36,7 @@ class StartupTest(unittest.TestCase):
         self.assertEqual({}, startup.call())
         self.assertEqual([1, 2, 3], data)
         # You cannot call run() again, by the way.
-        self.assertRaises(StartupException, startup.call)
+        self.assertRaises(StartupError, startup.call)
 
     def test_sequential_order(self):
         startup = Startup()
@@ -117,24 +117,24 @@ class StartupTest(unittest.TestCase):
         def func4() -> 1: pass
         def func5() -> []: pass
         def func6() -> (1, '2'): pass
-        self.assertRaises(StartupException, startup, func1)
-        self.assertRaises(StartupException, startup, func2)
-        self.assertRaises(StartupException, startup, func3)
-        self.assertRaises(StartupException, startup, func4)
-        self.assertRaises(StartupException, startup, func5)
-        self.assertRaises(StartupException, startup, func6)
+        self.assertRaises(StartupError, startup, func1)
+        self.assertRaises(StartupError, startup, func2)
+        self.assertRaises(StartupError, startup, func3)
+        self.assertRaises(StartupError, startup, func4)
+        self.assertRaises(StartupError, startup, func5)
+        self.assertRaises(StartupError, startup, func6)
 
     def test_annotate_twice(self):
         startup = Startup()
         def func(): pass
         self.assertEqual(func, startup(func))
-        self.assertRaises(StartupException, startup, func)
+        self.assertRaises(StartupError, startup, func)
 
     def test_unsatisfable_dependency_1(self):
         startup = Startup()
         @startup
         def foo(x: ['x'], y: 'y'): pass
-        self.assertRaises(StartupException, startup.call, y=1)
+        self.assertRaises(StartupError, startup.call, y=1)
 
     def test_unsatisfable_dependency_2(self):
         startup = Startup()
@@ -144,7 +144,7 @@ class StartupTest(unittest.TestCase):
         def func2(_: 'y') -> 'z': pass
         @startup
         def func3(_: 'y') -> 'x': pass
-        self.assertRaises(StartupException, startup.call)
+        self.assertRaises(StartupError, startup.call)
 
     def test_set_variable(self):
 
@@ -176,7 +176,7 @@ class StartupTest(unittest.TestCase):
         startup.set('x', 1)
         self.assertDictEqual({'x': 2}, startup.call(x=2))
 
-        with self.assertRaises(StartupException):
+        with self.assertRaises(StartupError):
             startup.set('v', 1)
 
 
