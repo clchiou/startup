@@ -143,6 +143,7 @@ class Startup:
 
         NOTE: ``func``'s non-optional parameters **must** be annotated.
         """
+        LOG.debug('add function %s.%s', func.__module__, func.__qualname__)
         if not callable(func):
             raise StartupError('%r is not callable' % func)
         if func in self.funcs:
@@ -160,7 +161,6 @@ class Startup:
         if closure.satisfied:
             self.satisfied.append(closure)
         self.funcs.add(func)
-        LOG.info('added %s.%s', func.__module__, func.__qualname__)
         return func
 
     def set(self, name, value):
@@ -337,7 +337,7 @@ class Variable:
         self.num_write_waits -= 1
         self.values.append(value)
         if self.readable:
-            LOG.info('%s becomes readable', self.name)
+            LOG.debug('%s is now readable', self.name)
 
     def read_latest(self):
         """Read the latest value."""
@@ -400,7 +400,7 @@ class Closure:
     def call(self):
         """Call the closure and return variable(s) that is written."""
         assert self.satisfied, self
-        LOG.info('calling %s.%s', self.func.__module__, self.func.__qualname__)
+        LOG.debug('call %s.%s', self.func.__module__, self.func.__qualname__)
         kwargs = {arg.name: arg.read() for arg in self.args}
         out_value = self.func(**kwargs)
         if self.writeto is None:
