@@ -163,6 +163,12 @@ class Startup:
         self.funcs.add(func)
         return func
 
+    def get(self, name):
+        """Get variable value before ``call()``."""
+        if not hasattr(self, 'funcs'):
+            raise StartupError('startup cannot be called again')
+        return self.variable_values[name]
+
     def set(self, name, value):
         """Set a variable before ``call()``."""
         if not hasattr(self, 'funcs'):
