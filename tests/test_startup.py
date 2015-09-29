@@ -1,5 +1,7 @@
 import unittest
 
+import inspect
+
 from startup import StartupError
 from startup import Startup
 
@@ -187,6 +189,42 @@ class StartupTest(unittest.TestCase):
 
         self.assertDictEqual(
             {'a': 1, 'b': 2, 'c': (1, 2)}, startup.call(a=1, b=2))
+
+    def test_class_and_method(self):
+        startup = Startup()
+
+        @startup.with_annotations({'return': 'foo'})
+        class Foo:
+            def __init__(self):
+                pass
+
+        @startup.with_annotations({'return': 'bar'})
+        class Bar:
+
+            @classmethod
+            def c(cls):
+                return 'c'
+
+            def m(self):
+                return 'm'
+
+        self.assertListEqual(['self'], inspect.getfullargspec(Foo).args)
+        self.assertListEqual([], inspect.getfullargspec(Bar).args)
+
+        self.assertListEqual(['cls'], inspect.getfullargspec(Bar.c).args)
+        self.assertTrue(inspect.ismethod(Bar.c))
+
+        self.assertListEqual(['self'], inspect.getfullargspec(Bar().m).args)
+        self.assertTrue(inspect.ismethod(Bar().m))
+
+        startup.add_func(Bar.c, {'return': 'c'})
+        startup.add_func(Bar().m, {'return': 'm'})
+
+        variables = startup.call()
+        self.assertTrue(isinstance(variables['foo'], Foo))
+        self.assertTrue(isinstance(variables['bar'], Bar))
+        self.assertEqual('c', variables['c'])
+        self.assertTrue('m', variables['m'])
 
 
 if __name__ == '__main__':

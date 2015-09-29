@@ -227,6 +227,8 @@ def _get_not_annotated(func, annotations=None):
     args = argspec.args
     if argspec.defaults is not None:
         args = args[:-len(argspec.defaults)]
+    if inspect.isclass(func) or inspect.ismethod(func):
+        args = args[1:]  # Strip off ``cls`` or ``self``.
     kwonlyargs = argspec.kwonlyargs
     if argspec.kwonlydefaults is not None:
         kwonlyargs = kwonlyargs[:-len(argspec.kwonlydefaults)]
