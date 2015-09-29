@@ -179,6 +179,15 @@ class StartupTest(unittest.TestCase):
         with self.assertRaises(StartupError):
             startup.set('v', 1)
 
+    def test_with_annotations(self):
+        startup = Startup()
+
+        @startup.with_annotations({'a': 'a', 'b': 'b', 'return': 'c'})
+        def func(a, b): return (a, b)
+
+        self.assertDictEqual(
+            {'a': 1, 'b': 2, 'c': (1, 2)}, startup.call(a=1, b=2))
+
 
 if __name__ == '__main__':
     unittest.main()

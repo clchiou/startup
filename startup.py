@@ -99,6 +99,7 @@ __all__ = [
     'startup',
 ]
 
+import functools
 import inspect
 import logging
 from collections import defaultdict, namedtuple
@@ -137,24 +138,30 @@ class Startup:
         del self.variable_values
         del self.satisfied
 
+    def with_annotations(self, annotations):
+        return functools.partial(self.add_func, annotations=annotations)
+
     def __call__(self, func):
         """Add ``func`` to this ``Startup`` object's dependency graph
         (a ``Startup`` object is usually used as a decorator).
 
         NOTE: ``func``'s non-optional parameters **must** be annotated.
         """
+        return self.add_func(func)
+
+    def add_func(self, func, annotations=None):
         LOG.debug('add function %s.%s', func.__module__, func.__qualname__)
         if not callable(func):
             raise StartupError('%r is not callable' % func)
         if func in self.funcs:
             raise StartupError('cannot add %r twice' % func)
-        not_annotated = _get_not_annotated(func)
+        not_annotated = _get_not_annotated(func, annotations)
         if not_annotated:
             raise StartupError(
                 'non-optional parameters %r of %r are not annotated' %
                 (not_annotated, func))
-        arg_read_var = _parse_args(func, self.variables)
-        writeto = _parse_ret(func, self.variables)
+        arg_read_var = _parse_args(func, self.variables, annotations)
+        writeto = _parse_ret(func, self.variables, annotations)
         closure = Closure(func, tuple(arg for arg, _ in arg_read_var), writeto)
         for _, var in arg_read_var:
             var.readers.append(closure)
@@ -214,7 +221,7 @@ class Startup:
 Startup.__doc__ = __doc__  # Sync __doc__ contents.  DRY!
 
 
-def _get_not_annotated(func):
+def _get_not_annotated(func, annotations=None):
     """Return non-optional parameters that are not annotated."""
     argspec = inspect.getfullargspec(func)
     args = argspec.args
@@ -223,16 +230,17 @@ def _get_not_annotated(func):
     kwonlyargs = argspec.kwonlyargs
     if argspec.kwonlydefaults is not None:
         kwonlyargs = kwonlyargs[:-len(argspec.kwonlydefaults)]
-    return [arg for arg in args + kwonlyargs if arg not in argspec.annotations]
+    annotations = annotations or argspec.annotations
+    return [arg for arg in args + kwonlyargs if arg not in annotations]
 
 
-def _parse_args(func, variables):
+def _parse_args(func, variables, annotations=None):
     """Return a list of arguments with the variable it reads.
 
     NOTE: Multiple arguments may read the same variable.
     """
     arg_read_var = []
-    for arg_name, anno in func.__annotations__.items():
+    for arg_name, anno in (annotations or func.__annotations__).items():
         if arg_name == 'return':
             continue
         var, read = _parse_arg(func, variables, arg_name, anno)
@@ -258,7 +266,7 @@ def _parse_arg(func, variables, arg_name, anno):
         (anno, arg_name, func))
 
 
-def _parse_ret(func, variables):
+def _parse_ret(func, variables, annotations=None):
     """Parse func's return annotation and return either None, a variable,
     or a tuple of variables.
 
@@ -266,7 +274,7 @@ def _parse_ret(func, variables):
       * _parse_ret() also notifies variables about will-writes.
       * A variable can be written multiple times per return annotation.
     """
-    anno = func.__annotations__.get('return')
+    anno = (annotations or func.__annotations__).get('return')
     if anno is None:
         return None
     elif isinstance(anno, str):
