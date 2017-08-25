@@ -1,10 +1,23 @@
 import subprocess
 from setuptools import setup
 
+try:
+    import buildtools
+except ImportError:
+    buildtools = None
+
 import startup
 
 
 subprocess.check_call('./gen_manifest.sh')
+
+
+if buildtools:
+    cmdclass = {
+        'bdist_zipapp': buildtools.make_bdist_zipapp(main_optional=True),
+    }
+else:
+    cmdclass = {}
 
 
 setup(
@@ -17,6 +30,8 @@ setup(
     author_email = startup.__author_email__,
     license = startup.__license__,
     url = 'https://github.com/clchiou/startup',
+
+    cmdclass = cmdclass,
 
     py_modules = ['startup'],
     test_suite = 'tests',
