@@ -1,4 +1,3 @@
-import subprocess
 from setuptools import setup
 
 try:
@@ -7,9 +6,6 @@ except ImportError:
     buildtools = None
 
 import startup
-
-
-subprocess.check_call('./gen_manifest.sh')
 
 
 if buildtools:
