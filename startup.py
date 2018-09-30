@@ -86,7 +86,7 @@ graphs.  Basically you annotate each module's dependencies and then
 for you.
 """
 
-__version__ = '0.3.0'
+__version__ = '0.4.0'
 
 __author__ = 'Che-Liang Chiou'
 __author_email__ = 'clchiou@gmail.com'
