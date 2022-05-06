@@ -1,7 +1,7 @@
 from setuptools import setup
 
 try:
-    import buildtools
+    from g1.devtools import buildtools
 except ImportError:
     buildtools = None
 
